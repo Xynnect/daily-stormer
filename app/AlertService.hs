@@ -13,12 +13,19 @@ import Network.Discord.Rest
 import Control.Concurrent.Chan
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad
+import qualified Data.ByteString.Lazy as BSL
 import Data.IORef
 import Data.Time.Clock
 import Data.Time.Clock.POSIX(getPOSIXTime)
-import Data.Text(pack)
+import Data.Text as T(pack)
+import Data.Text.Lazy as TL(pack)
+import Data.Text.Lazy.Encoding as TL(encodeUtf8)
+import Text.Blaze.Html5 as H hiding (main)
+import Text.Blaze.Html5.Attributes as A
+import Text.Blaze.Renderer.Utf8 (renderMarkup)
 import qualified Data.Set as S
 import Pipes
+import Prelude hiding (head)
 
 data GlobalState = GlobalState {
   currentAlertsRef :: IORef (S.Set String),
@@ -30,8 +37,23 @@ main = do
   st <- initialize
   startTimer st
   W.run 2000 $ \request respond -> do
-    respond $ W.responseLBS status200 [] "BEWARE OF HURRICANES"
-
+    text <- renderState st
+    respond $ W.responseLBS status200 [] text
+    
+renderState :: GlobalState -> IO BSL.ByteString
+renderState (currentAlertsRef -> alertsRef) = do
+  alerts <- readIORef alertsRef
+  return $ renderMarkup $ html $ do
+    head $ do
+      title "The Daily Stormer"
+      -- link ! rel "stylesheet " type_ "text/css" ! href "http://assets.daily-stormer.michaelburge.us"
+    body $ do
+      table ! class_ "alerts" $ forM_ alerts $ \alert -> do
+        tr $
+          td $ toMarkup alert
+  where
+    title = H.title
+          
 initialize :: IO GlobalState
 initialize = do
   titles <- fetchAlerts
@@ -48,16 +70,16 @@ discordChannel = undefined
 initializeDiscordBot :: IO (Chan String)
 initializeDiscordBot = do
   chan <- newChan
-  forkIO $ do
-    runBot (Bot discordToken) $ do
-      with ReadyEvent $ \(Init v u _ _ _) -> do
-        liftIO $ putStrLn $ "Connected to gateway " ++ show v ++ " as user " ++ show u
-        loop discordChannel chan
+  forkIO $ return ()
+    -- runBot (Bot discordToken) $ do
+    --   with ReadyEvent $ \(Init v u _ _ _) -> do
+    --     liftIO $ putStrLn $ "Connected to gateway " ++ show v ++ " as user " ++ show u
+        --loop discordChannel chan
   return chan
   where
     loop discordChannel chan = do
       alert <- liftIO $ readChan chan
-      fetch' $ CreateMessage discordChannel (pack alert) Nothing
+      fetch' $ CreateMessage discordChannel (T.pack alert) Nothing
 
 startTimer :: GlobalState -> IO ()
 startTimer st@(currentAlertsRef -> alertsRef) = do
@@ -70,7 +92,7 @@ startTimer st@(currentAlertsRef -> alertsRef) = do
       updatedAlerts <- fetchAlerts
       let newAlerts = updatedAlerts `S.difference` oldAlerts
       unless (S.null newAlerts) $ do
-        atomicWriteIORef alertsRef newAlerts
+        atomicWriteIORef alertsRef updatedAlerts
         notifyListeners st newAlerts
       loop
     seconds = 1000000
