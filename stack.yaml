@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.0
+resolver: lts-8.0
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -37,9 +37,16 @@ resolver: lts-9.0
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
+- location:
+    git: https://github.com/jano017/Discord.hs.git
+    commit: 3571e84f78454bf9c48b1e427c1acf6a5fae2bdd
+  extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps: []
+extra-deps:
+  - discord-hs-0.4.2
+  - discord-rest-0.2.2
+  - discord-types-0.2.2
 
 # Override default flag values for local packages and extra-deps
 flags: {}
