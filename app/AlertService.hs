@@ -76,12 +76,13 @@ initializeDiscordBot = do
     runBot (Bot discordToken) $ do
       with ReadyEvent $ \(Init v u _ _ _) -> do
         liftIO $ putStrLn $ "Connected to gateway " ++ show v ++ " as user " ++ show u
-        loop discordChannel chan
+        loop chan
   return chan
   where
-    loop discordChannel chan = do
+    loop chan = do
       alert <- liftIO $ readChan chan
       fetch' $ CreateMessage discordChannel (T.pack alert) Nothing
+      loop chan
 
 startTimer :: GlobalState -> IO ()
 startTimer st@(currentAlertsRef -> alertsRef) = do
