@@ -14,7 +14,9 @@ import Control.Concurrent.Chan
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad
 import qualified Data.ByteString.Lazy as BSL
+import Data.Either
 import Data.IORef
+import Data.Maybe (catMaybes)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX(getPOSIXTime)
 import Data.Text as T(pack)
@@ -109,8 +111,24 @@ terminalListener alert = print alert
 discordListener :: Chan String -> String -> IO ()
 discordListener chan alert = writeChan chan alert
 
+feedUrls = [
+  "http://www.nhc.noaa.gov/nhc_at1.xml",
+  "http://www.nhc.noaa.gov/nhc_at2.xml",
+  "http://www.nhc.noaa.gov/nhc_at3.xml",
+  "http://www.nhc.noaa.gov/nhc_at4.xml",
+  "http://www.nhc.noaa.gov/nhc_at5.xml",
+  "http://www.nhc.noaa.gov/nhc_ep1.xml",
+  "http://www.nhc.noaa.gov/nhc_ep2.xml",
+  "http://www.nhc.noaa.gov/nhc_ep3.xml",
+  "http://www.nhc.noaa.gov/nhc_ep4.xml",
+  "http://www.nhc.noaa.gov/nhc_ep5.xml"
+  ]
+
 fetchAlerts :: IO (S.Set String)
 fetchAlerts = do
-  now <- getCurrentTime
-  putStrLn "Fetched!"
-  return $ S.fromList [ "example", show now ]
+  feeds <- rights <$> mapM openAsFeed feedUrls
+  let mTitles = flip Prelude.map feeds $ \feed -> case feed of
+        RSSFeed (rssChannel -> (rssTitle -> title)) -> Just title
+        _ -> Nothing
+  let titles = catMaybes mTitles
+  return $ S.fromList titles
