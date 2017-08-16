@@ -93,8 +93,8 @@ startTimer st@(currentAlertsRef -> alertsRef) = do
       oldAlerts <- readIORef alertsRef
       updatedAlerts <- fetchAlerts
       let newAlerts = updatedAlerts `S.difference` oldAlerts
+      atomicWriteIORef alertsRef updatedAlerts
       unless (S.null newAlerts) $ do
-        atomicWriteIORef alertsRef updatedAlerts
         notifyListeners st newAlerts
       loop
     seconds = 1000000
@@ -127,8 +127,7 @@ feedUrls = [
 fetchAlerts :: IO (S.Set String)
 fetchAlerts = do
   feeds <- rights <$> mapM openAsFeed feedUrls
-  let mTitles = flip Prelude.map feeds $ \feed -> case feed of
+  let titles = catMaybes $ flip Prelude.map feeds $ \feed -> case feed of
         RSSFeed (rssChannel -> (rssTitle -> title)) -> Just title
         _ -> Nothing
-  let titles = catMaybes mTitles
   return $ S.fromList titles
