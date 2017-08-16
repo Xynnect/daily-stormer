@@ -70,11 +70,11 @@ discordChannel = undefined
 initializeDiscordBot :: IO (Chan String)
 initializeDiscordBot = do
   chan <- newChan
-  forkIO $ return ()
-    -- runBot (Bot discordToken) $ do
-    --   with ReadyEvent $ \(Init v u _ _ _) -> do
-    --     liftIO $ putStrLn $ "Connected to gateway " ++ show v ++ " as user " ++ show u
-        --loop discordChannel chan
+  forkIO $ do
+    runBot (Bot discordToken) $ do
+      with ReadyEvent $ \(Init v u _ _ _) -> do
+        liftIO $ putStrLn $ "Connected to gateway " ++ show v ++ " as user " ++ show u
+        loop discordChannel chan
   return chan
   where
     loop discordChannel chan = do
